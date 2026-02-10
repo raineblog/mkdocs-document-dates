@@ -49,7 +49,7 @@ class DocumentDatesPlugin(BasePlugin):
         self.recent_docs_html = None
         self.recent_enable = False
 
-    def _make_url(origin_url: str):
+    def _make_url(self, origin_url: str):
         return self.base_url + origin_url.lstrip('/')
 
     def on_config(self, config):
