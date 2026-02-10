@@ -154,13 +154,25 @@ class DocumentDatesPlugin(BasePlugin):
             created = self._get_file_creation_time(file_path, rel_path)
         if not updated:
             updated = self._get_file_modification_time(file_path, rel_path)
+
+        # 时间信息自动转换为 UTC 时区
+        
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        else:
+            created = created.astimezone(timezone.utc)
+
+        if updated.tzinfo is None:
+            updated = updated.replace(tzinfo=timezone.utc)
+        else:
+            updated = updated.astimezone(timezone.utc)
         
         # 获取作者信息
         authors = self._get_author_info(rel_path, page, config)
         
         # 在排除前暴露 meta 信息给前端使用
-        page.meta['document_dates_created'] = created.isoformat()
-        page.meta['document_dates_updated'] = updated.isoformat()
+        page.meta['document_dates_created'] = created.strftime("%Y-%m-%d %H:%M")
+        page.meta['document_dates_updated'] = updated.strftime("%Y-%m-%d %H:%M")
         page.meta['document_dates_authors'] = authors
         
         # 检查是否需要排除
