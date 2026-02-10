@@ -49,8 +49,15 @@ class DocumentDatesPlugin(BasePlugin):
         self.recent_docs_html = None
         self.recent_enable = False
 
+    def _make_url(origin_url: str):
+        return self.base_url + origin_url.lstrip('/')
+
     def on_config(self, config):
         docs_dir_path = Path(config['docs_dir'])
+
+        self.base_url = config.get('site_url', '').rstrip('/')
+        if self.site_url == '':
+            self.base_url = '//'
 
         # 加载 author 配置
         authors_file = docs_dir_path / 'authors.yml'
@@ -252,6 +259,9 @@ class DocumentDatesPlugin(BasePlugin):
             loader = FileSystemLoader(str(template_dir)),
             autoescape = select_autoescape(["html", "xml"])
         )
+
+        env.filters['make_url'] = _make_url
+
         template = env.get_template(template_file)
 
         # 渲染模板

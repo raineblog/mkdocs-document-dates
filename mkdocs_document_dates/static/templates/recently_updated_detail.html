@@ -82,7 +82,7 @@
 <div>
     {%- for mtime, rel_path, title, origin_url, cover, summary in recent_docs %}
     <div class="article-card">
-        <a class="card-header" href="{{ origin_url }}" target="_blank">
+        <a class="card-header" href="{{ origin_url | make_url }}" target="_blank">
             <div class="card-title">{{ title }}</div>
             <time class="dd-timeago card-date" datetime="{{ mtime }}">{{ mtime[:10] }}</time>
         </a>
