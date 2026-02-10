@@ -57,10 +57,10 @@ class DocumentDatesPlugin(BasePlugin):
         docs_dir_path = Path(config['docs_dir'])
 
         site_url = config.get('site_url', '').strip()
-        if not site_url or site_url == '/':
-            self.base_url = '//'
+        if not site_url or site_url == '/' or site_url == '.':
+            self.base_url = '/'
         else:
-            self.base_url = site_url.rstrip('/') + '/'
+            self.base_url = site_url.rstrip('/')
 
         # 加载 author 配置
         authors_file = docs_dir_path / 'authors.yml'
