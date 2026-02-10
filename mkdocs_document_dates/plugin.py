@@ -3,7 +3,7 @@ import yaml
 import shutil
 import logging
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from mkdocs.plugins import BasePlugin
 from mkdocs.config import config_options
