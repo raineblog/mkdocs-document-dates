@@ -260,7 +260,7 @@ class DocumentDatesPlugin(BasePlugin):
             autoescape = select_autoescape(["html", "xml"])
         )
 
-        env.filters['make_url'] = _make_url
+        env.filters['make_url'] = self._make_url
 
         template = env.get_template(template_file)
 
