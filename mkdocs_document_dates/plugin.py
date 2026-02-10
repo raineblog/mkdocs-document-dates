@@ -48,16 +48,19 @@ class DocumentDatesPlugin(BasePlugin):
         self.authors_yml = {}
         self.recent_docs_html = None
         self.recent_enable = False
+        self.base_url: str = ""
 
-    def _make_url(self, origin_url: str):
-        return self.base_url + origin_url.lstrip('/')
+    def _make_url(self, path: str):
+        return self.base_url + '/' + path
 
     def on_config(self, config):
         docs_dir_path = Path(config['docs_dir'])
 
-        self.base_url = config.get('site_url', '').rstrip('/') + '/'
-        if self.base_url == '/':
+        site_url = config.get('site_url', '').strip()
+        if not site_url or site_url == '/':
             self.base_url = '//'
+        else:
+            self.base_url = site_url.rstrip('/') + '/'
 
         # 加载 author 配置
         authors_file = docs_dir_path / 'authors.yml'
