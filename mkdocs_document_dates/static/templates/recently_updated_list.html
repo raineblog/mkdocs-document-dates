@@ -43,7 +43,7 @@
 <div class="recently-updated">
     {%- for mtime, rel_path, title, origin_url, cover, summary in recent_docs %}
     <div class="recently-updated-item">
-        <a href="{{ origin_url | url }}" target="_blank">{{ title }}</a>
+        <a href="{{ origin_url }}" target="_blank">{{ title }}</a>
         <time class="dd-timeago" datetime="{{ mtime }}">{{ mtime[:10] }}</time>
     </div>
     {%- endfor %}
