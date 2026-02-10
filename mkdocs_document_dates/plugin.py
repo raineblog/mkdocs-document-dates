@@ -56,7 +56,7 @@ class DocumentDatesPlugin(BasePlugin):
         docs_dir_path = Path(config['docs_dir'])
 
         self.base_url = config.get('site_url', '').rstrip('/')
-        if self.site_url == '':
+        if self.base_url == '':
             self.base_url = '//'
 
         # 加载 author 配置
