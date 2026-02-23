@@ -58,8 +58,8 @@ class DocumentDatesPlugin(BasePlugin):
     def on_config(self, config):
         docs_dir_path = Path(config['docs_dir'])
 
-        site_url = config.get('site_url', '').strip()
-        if not site_url or site_url == '/' or site_url == '.':
+        site_url = (config.get('site_url') or '').strip()
+        if not site_url or site_url in ('/', '.'):
             self.base_url = '/'
         else:
             self.base_url = site_url.rstrip('/')
