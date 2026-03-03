@@ -1,32 +1,35 @@
-{%- if page.meta.document_dates_created or page.meta.document_dates_updated or page.meta.document_dates_authors -%}
+{%- set dates = page.meta._mx.document_dates.dates %}
+{%- set authors = page.meta._mx.document_dates.authors %}
+{%- if dates or authors -%}
 <div class="document-dates-plugin">
+  {%- if dates %}
   <div class="dd-left">
 
     {#- Render date of creation -#}
-    {%- if page.meta.document_dates_created %}
-    <span class="dd-item" data-tippy-content data-tippy-raw="{{ page.meta.document_dates_created[:10] }}">
+    {%- if dates.created %}
+    <span class="dd-item" data-tippy-content data-tippy-raw="{{ dates.created[:10] }}">
       <span class="material-icons" data-icon="doc_created"></span>
-      <time datetime="{{ page.meta.document_dates_created }}"></time>
+      <time datetime="{{ dates.created }}"></time>
     </span>
     {%- endif %}
 
     {#- Render date of last update -#}
-    {%- if page.meta.document_dates_updated %}
-    <span class="dd-item" data-tippy-content data-tippy-raw="{{ page.meta.document_dates_updated[:10] }}">
+    {%- if dates.updated %}
+    <span class="dd-item" data-tippy-content data-tippy-raw="{{ dates.updated[:10] }}">
       <span class="material-icons" data-icon="doc_updated"></span>
-      <time datetime="{{ page.meta.document_dates_updated }}"></time>
+      <time datetime="{{ dates.updated }}"></time>
     </span>
     {%- endif %}
   </div>
-
+  {%- endif %}
   
   {#- Render authors -#}
-  {%- if page.meta.document_dates_authors %}
+  {%- if authors %}
   <div class="dd-right">
-    {%- set icon = 'doc_author' if page.meta.document_dates_authors|length == 1 else 'doc_authors' %}
+    {%- set icon = 'doc_author' if authors|length == 1 else 'doc_authors' %}
     <span class="material-icons" data-icon="{{ icon }}"></span>
     <div class="author-group">
-    {%- for author in page.meta.document_dates_authors %}
+    {%- for author in authors %}
       {%- set tooltip -%}
         {%- if author.url -%}
           <a href="{{ author.url }}" target="_blank">{{ author.name }}</a>
