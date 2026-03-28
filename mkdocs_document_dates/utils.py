@@ -1,6 +1,7 @@
 import os
 import platform
 import json
+import html
 import heapq
 import logging
 import subprocess
@@ -500,7 +501,7 @@ def analyze_markdown(md: str) -> list:
     seconds += math_blocks * 4
     seconds += images * 2
 
-    summary = MD_SYNTAX_RE.sub("", "  ".join(summary_lines)).strip()
+    summary = html.escape(MD_SYNTAX_RE.sub("", "  ".join(summary_lines)).strip())
     minutes = max(1, math.ceil(seconds / 60))
 
     return summary, minutes

@@ -237,8 +237,8 @@ class DocumentDatesPlugin(BasePlugin):
             # 摘要行数的动态配置
             summary = recently_updated_config.get("summary_lines", {})
             summary_lines = {
-                "grid": html.escape(summary.get("grid", 4)),
-                "detail": html.escape(summary.get("detail", 6)),
+                "grid": summary.get("grid", 4),
+                "detail": summary.get("detail", 6),
             }
 
             self.recent_docs_html = self._render_recently_updated_html(env, config, recently_updated_docs, summary_lines)
