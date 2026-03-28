@@ -1,6 +1,5 @@
 import os
 import yaml
-import html
 import shutil
 import logging
 from jinja2 import ChoiceLoader, FileSystemLoader
