@@ -173,7 +173,7 @@ class DocumentDatesPlugin(BasePlugin):
         created = self._load_meta_date(page.meta, self.config['created_field_names'])
         updated = self._load_meta_date(page.meta, self.config['updated_field_names'])
         authors = self._load_meta_author(page.meta, page.url)
-        
+
         # 再获取缓存的数据
         if not created:
             created = self._load_created_cached(file_path, rel_path)
