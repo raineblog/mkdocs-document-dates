@@ -2,15 +2,15 @@ import os
 import yaml
 import shutil
 import logging
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import ChoiceLoader, FileSystemLoader
 from datetime import datetime, timezone
 from pathlib import Path
-from mkdocs.plugins import BasePlugin
+from mkdocs.plugins import BasePlugin, event_priority
 from mkdocs.config import config_options
 from mkdocs.structure.pages import Page
 from mkdocs.utils import get_relative_url
 from urllib.parse import urlparse
-from .utils import get_file_creation_time, load_git_metadata, load_git_last_updated_date, read_jsonl_cache, compile_exclude_patterns, is_excluded, get_recently_updated_files
+from .utils import load_file_creation_date, load_git_metadata, load_git_last_updated_dates, read_jsonl_cache, compile_exclude_patterns, is_excluded, get_recently_updated_files
 
 logger = logging.getLogger("mkdocs.plugins.document_dates")
 logger.setLevel(logging.WARNING)  # DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -44,7 +44,7 @@ class DocumentDatesPlugin(BasePlugin):
     def __init__(self):
         super().__init__()
 
-        self.dates_cache = {}
+        self.data_cached = {}
         self.last_updated_dates = {}
         self.authors_yml = {}
         self.recent_docs_html = None
@@ -68,25 +68,25 @@ class DocumentDatesPlugin(BasePlugin):
         authors_file = docs_dir_path / 'authors.yml'
         if not authors_file.exists():
             try:
-                blog_config = config['plugins']['material/blog'].config
+                blog_config = config.plugins.get(f"{config.theme.name}/blog").config
                 authors_file_resolved = blog_config.authors_file.format(blog=blog_config.blog_dir)
                 authors_file = docs_dir_path / authors_file_resolved
             except Exception:
                 pass
         self._load_authors_from_yaml(authors_file)
 
-        # 加载文档元数据
-        self.dates_cache = load_git_metadata(docs_dir_path)
-        # 覆盖 jsonl 缓存
+        # 加载文档 git 元数据(日期 & 作者)
+        self.data_cached = load_git_metadata(docs_dir_path)
+        # 加载 jsonl 缓存数据
         jsonl_cache_file = docs_dir_path / '.dates_cache.jsonl'
         if jsonl_cache_file.exists():
             jsonl_cache = read_jsonl_cache(jsonl_cache_file)
             for filename, new_info in jsonl_cache.items():
-                if filename in self.dates_cache:
-                    self.dates_cache[filename].update(new_info)
+                if filename in self.data_cached:
+                    self.data_cached[filename].update(new_info)
 
-        # 加载文档最近更新时间
-        self.last_updated_dates = load_git_last_updated_date(docs_dir_path)
+        # 加载文档最近更新时间(日期)
+        self.last_updated_dates = load_git_last_updated_dates(docs_dir_path)
 
 
         # 复制配置文件到用户目录（如果不存在）
@@ -161,6 +161,7 @@ class DocumentDatesPlugin(BasePlugin):
 
         return config
 
+    @event_priority(50)
     def on_page_markdown(self, markdown, page: Page, config, files):
         # 获取相对路径，src_uri 总是以"/"分隔
         rel_path = getattr(page.file, 'src_uri', page.file.src_path)
@@ -168,13 +169,18 @@ class DocumentDatesPlugin(BasePlugin):
             rel_path = rel_path.replace(os.sep, '/')
         file_path = page.file.abs_src_path
         
-        # 获取时间信息
-        created = self._find_meta_date(page.meta, self.config['created_field_names'])
-        updated = self._find_meta_date(page.meta, self.config['updated_field_names'])
+        # 优先获取 page.meta 中的数据
+        created = self._load_meta_date(page.meta, self.config['created_field_names'])
+        updated = self._load_meta_date(page.meta, self.config['updated_field_names'])
+        authors = self._load_meta_author(page.meta, page.url)
+        
+        # 再获取缓存的数据
         if not created:
-            created = self._get_file_creation_time(file_path, rel_path)
+            created = self._load_created_cached(file_path, rel_path)
         if not updated:
-            updated = self._get_file_modification_time(file_path, rel_path)
+            updated = self._load_updated_cached(file_path, rel_path)
+        if not authors:
+            authors = self._load_author_cached(rel_path, page, config)
 
         # 时间信息自动转换为 UTC 时区
         
@@ -187,9 +193,6 @@ class DocumentDatesPlugin(BasePlugin):
             updated = updated.replace(tzinfo=timezone.utc)
         else:
             updated = updated.astimezone(timezone.utc)
-        
-        # 获取作者信息
-        authors = self._get_author_info(rel_path, page, config)
         
         # 在排除前暴露 meta 信息给前端使用
         page.meta['document_dates_created'] = created.strftime("%Y-%m-%d %H:%M")
@@ -206,6 +209,7 @@ class DocumentDatesPlugin(BasePlugin):
         # 将信息写入 markdown
         return self._insert_date_info(markdown, info_html)
 
+    @event_priority(50)
     def on_env(self, env, config, files):
         recently_updated_config = self.config.get('recently-updated')
         if recently_updated_config:
@@ -224,26 +228,23 @@ class DocumentDatesPlugin(BasePlugin):
         recently_updated_docs = get_recently_updated_files(self.last_updated_dates, files, recent_exclude_patterns, limit, self.recent_enable)
 
         # 将数据注入到 config['extra'] 中供全局访问
-        if 'extra' not in config:
-            config['extra'] = {}
-        config['extra']['recently_updated_docs'] = recently_updated_docs
+        if not config.get('extra', {}).get("recently_updated_docs", {}):
+            config['extra']['recently_updated_docs'] = recently_updated_docs
 
         # 渲染HTML
         if self.recent_enable:
-            self.recent_docs_html = self._render_recently_updated_html(recently_updated_docs)
+            # 摘要行数的动态配置
+            summary = recently_updated_config.get("summary_lines", {})
+            summary_lines = {
+                "grid": summary.get("grid", 4),
+                "detail": summary.get("detail", 6),
+            }
 
-        # # 访问日期数据的便捷函数
-        # def mdd_access(page, domain):
-        #     return (
-        #         page.meta.get("_mx", {})
-        #         .get("document_dates", {})
-        #         .get(domain, {})
-        #     )
-
-        # env.globals["mdd"] = mdd_access
+            self.recent_docs_html = self._render_recently_updated_html(env, config, recently_updated_docs, summary_lines)
 
         return env
 
+    @event_priority(50)
     def on_post_page(self, output, page, config):
         if self.recent_enable and '\n<!-- RECENTLY_UPDATED_DOCS -->' in output:
             output = output.replace('\n<!-- RECENTLY_UPDATED_DOCS -->', self.recent_docs_html or '')
@@ -274,26 +275,33 @@ class DocumentDatesPlugin(BasePlugin):
             logger.info(f"Error parsing .authors.yml: {e}")
 
 
-    def _render_recently_updated_html(self, recently_updated_data):
-        default_template_path = Path(__file__).parent / 'static' / 'templates' / 'recently_updated_group.html'
-        template_dir = default_template_path.parent
-        template_file = default_template_path.name
+    def _render_recently_updated_html(self, env, config, recently_updated_data, summary_lines):
+        # 设置模板加载器
+        template_path = Path(__file__).parent / 'static' / 'templates'
+        env.loader = ChoiceLoader([
+            FileSystemLoader(str(template_path)),
+            env.loader
+        ])
 
-        # 加载模板
-        env = Environment(
-            loader = FileSystemLoader(str(template_dir)),
-            autoescape = select_autoescape(["html", "xml"])
-        )
+        # 用于模板的安全阀
+        try:
+            env.get_template("partials/language.html")
+            env.globals["HAS_LANGUAGE_TEMPLATE"] = True
+        except Exception:
+            env.globals["HAS_LANGUAGE_TEMPLATE"] = False
+
 
         env.filters['make_url'] = self._make_url
 
-        template = env.get_template(template_file)
+        # 获取模板并渲染
+        template = env.get_template("recently_updated_group.html")
+        return template.render(
+            recent_docs=recently_updated_data,
+            summary_lines=summary_lines,
+            config=config
+        )
 
-        # 渲染模板
-        return template.render(recent_docs=recently_updated_data)
-
-
-    def _find_meta_date(self, meta, field_names):
+    def _load_meta_date(self, meta, field_names):
         for field in field_names:
             if field in meta:
                 try:
@@ -304,14 +312,14 @@ class DocumentDatesPlugin(BasePlugin):
                     continue
         return None
 
-    def _get_file_creation_time(self, file_path, rel_path):
+    def _load_created_cached(self, file_path, rel_path):
         # 优先从缓存中读取
-        if rel_path in self.dates_cache:
-            return datetime.fromisoformat(self.dates_cache[rel_path]['created'])
+        if rel_path in self.data_cached:
+            return datetime.fromisoformat(self.data_cached[rel_path]['created'])
         # 从文件系统获取
-        return get_file_creation_time(file_path).astimezone()
+        return load_file_creation_date(file_path).astimezone()
 
-    def _get_file_modification_time(self, file_path, rel_path):
+    def _load_updated_cached(self, file_path, rel_path):
         # 优先从缓存中读取
         if rel_path in self.last_updated_dates:
             return datetime.fromtimestamp(self.last_updated_dates[rel_path]).astimezone()
@@ -320,34 +328,29 @@ class DocumentDatesPlugin(BasePlugin):
         return datetime.fromtimestamp(stat.st_mtime).astimezone()
 
 
-    def _get_author_info(self, rel_path, page, config):
-        # 1. meta author
-        authors = self._process_meta_author(page.meta, page.url)
-        if authors:
-            return authors
-
-        # 2. git author
-        if rel_path in self.dates_cache:
-            authors_list = self.dates_cache[rel_path].get('authors')
+    def _load_author_cached(self, rel_path, page, config):
+        # 1. git author
+        if rel_path in self.data_cached:
+            authors_list = self.data_cached[rel_path].get('authors')
             if authors_list:
                 authors = []
                 for data in authors_list:
                     full_author = self.authors_yml.get(data['name'])
                     if full_author:
-                        authors.append(self._get_repaired_author(full_author, page.url))
+                        authors.append(self._repair_author(full_author, page.url))
                     else:
                         authors.append(Author(**data))
                 return authors
 
-        # 3. site_author 或 PC username
+        # 2. site_author 或 PC username
         name = config.get('site_author') or Path.home().name
         full_author = self.authors_yml.get(name)
         if full_author:
-            return [self._get_repaired_author(full_author, page.url)]
+            return [self._repair_author(full_author, page.url)]
         else:
             return [Author(name=name)]
 
-    def _process_meta_author(self, meta, page_url):
+    def _load_meta_author(self, meta, page_url):
         try:
             # 匹配 authors 数组
             author_objs = []
@@ -355,7 +358,7 @@ class DocumentDatesPlugin(BasePlugin):
             for key in authors_data or []:
                 full_author = self.authors_yml.get(key)
                 if full_author:
-                    author_objs.append(self._get_repaired_author(full_author, page_url))
+                    author_objs.append(self._repair_author(full_author, page_url))
                 else:
                     author_objs.append(Author(name=str(key)))
             if author_objs:
@@ -369,14 +372,14 @@ class DocumentDatesPlugin(BasePlugin):
                     name = email.partition('@')[0]
                 full_author = self.authors_yml.get(name)
                 if full_author:
-                    return [self._get_repaired_author(full_author, page_url)]
+                    return [self._repair_author(full_author, page_url)]
                 else:
                     return [Author(name=name, email=email)]
         except Exception as e:
             logger.warning(f"Error processing author meta: {e}")
         return None
 
-    def _get_repaired_author(self, author: Author, page_url: str) -> Author:
+    def _repair_author(self, author: Author, page_url: str) -> Author:
         try:
             if not author.avatar:
                 return author
@@ -390,7 +393,7 @@ class DocumentDatesPlugin(BasePlugin):
             return author
 
 
-    def _get_formatted_date(self, date: datetime):
+    def _formatting_date(self, date: datetime):
         if self.config['type'] == 'timeago':
             return ""
         elif self.config['type'] == 'datetime':
@@ -419,7 +422,7 @@ class DocumentDatesPlugin(BasePlugin):
                 return (
                     f"<span class='dd-item' data-tippy-content data-tippy-raw='{formatted}'>"
                     f"<span class='material-icons' data-icon='{icon}'></span>"
-                    f"<time datetime='{time_obj.isoformat()}'>{self._get_formatted_date(time_obj)}</time>"
+                    f"<time datetime='{time_obj.isoformat()}'>{self._formatting_date(time_obj)}</time>"
                     f"</span>"
                 )
 
