@@ -2,13 +2,25 @@
 
 
 
+## v3.7.2 (2026-03-30)
+
+### en
+
+- Fixed a layout bug in summary rendering
+
+### zh
+
+- 修复了摘要渲染中的布局 bug
+
+
+
 ## v3.7.1 (2026-03-29)
 
 ### en
 
 - Added support for ProperDocs
 - Added high-performance readtime & summary parsers
-- Added `readtime` and `tag` rendering for the recently updated list, see [Reading-Time-Estimation](https://jaywhj.netlify.app/document-dates-en#Reading-Time-Estimation)
+- Added `readtime` and `tag` rendering for the recently updated list, for readtime calculation method see [Reading-Time-Estimation](https://jaywhj.netlify.app/document-dates-en#Reading-Time-Estimation)
 - Added line count configuration for `summary` in the recently updated list, see [Summary-Line-Configuration](https://jaywhj.netlify.app/document-dates-en#Summary-Line-Configuration)
 - Improved the layout style for mixed text and images in the recently updated list
 - Increased plugin execution priority to improve compatibility and systematically provide data support for other plugins or projects
@@ -17,7 +29,7 @@
 ### zh
 
 - 添加了对 ProperDocs 的支持
-- 新增了高性能的 readtime 和 summary 解析器
+- 为最近更新列表新增了高性能的 readtime 和 summary 解析器
 - 为最近更新列表新增了 readtime 和 tag 的渲染，readtime 计算方式见 [阅读时长预估](https://jaywhj.netlify.app/document-dates-zh#%E9%98%85%E8%AF%BB%E6%97%B6%E9%95%BF%E9%A2%84%E4%BC%B0)
 - 为最近更新列表的 summary 添加了行数配置，详情见 [配置摘要行数](https://jaywhj.netlify.app/document-dates-zh#%E9%85%8D%E7%BD%AE%E6%91%98%E8%A6%81%E8%A1%8C%E6%95%B0)
 - 优化了最近更新列表里的图文混排的样式
