@@ -179,11 +179,16 @@ class DocumentDatesPlugin(BasePlugin):
         # 注入数据
         page.meta["document_dates"] = {
             "dates": {
-                "created": created.strftime("%Y-%m-%d %H:%M"),
-                "updated": updated.strftime("%Y-%m-%d %H:%M"),
+                "created": created,
+                "updated": updated,
             },
             "authors": authors
         }
+
+        # 在排除前暴露 meta 信息给前端使用（保留备用）
+        page.meta['document_dates_created'] = created.strftime("%Y-%m-%d %H:%M")
+        page.meta['document_dates_updated'] = updated.strftime("%Y-%m-%d %H:%M")
+        page.meta['document_dates_authors'] = authors
 
         # 检查是否需要排除
         if is_excluded(rel_path, self._exclude_patterns):
