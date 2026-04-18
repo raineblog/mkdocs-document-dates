@@ -262,7 +262,7 @@
      ">
     {%- for doc in recent_docs %}
     {%- set title = doc.title | default('') %}
-    {%- set origin_url = doc.url | default('') %}
+    {%- set url = doc.url | default('') %}
     {%- set updated_dt = doc.updated_dt | default('') %}
     {%- set updated = doc.updated | default(updated_dt[:10]) %}
     {%- set cover = doc.cover | default('') %}

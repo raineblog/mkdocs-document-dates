@@ -3,14 +3,14 @@ import yaml
 import shutil
 import logging
 from jinja2 import ChoiceLoader, FileSystemLoader
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from mkdocs.plugins import BasePlugin, event_priority
 from mkdocs.config import config_options
 from mkdocs.structure.pages import Page
 from mkdocs.utils import get_relative_url
 from urllib.parse import urlparse
-from .utils import load_file_creation_date, load_git_metadata, load_git_last_updated_dates, read_jsonl_cache, compile_exclude_patterns, is_excluded, get_recently_updated_files
+from .utils import load_file_creation_date, load_git_metadata, load_git_last_updated_dates, read_jsonl_cache, compile_exclude_patterns, is_excluded, get_recently_updated_files, transform_timezone
 
 logger = logging.getLogger("mkdocs.plugins.document_dates")
 logger.setLevel(logging.WARNING)  # DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -173,17 +173,9 @@ class DocumentDatesPlugin(BasePlugin):
             authors = self._load_author_cached(rel_path, page, config)
 
         # 时间信息自动转换为 UTC 时区
-        
-        if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        else:
-            created = created.astimezone(timezone.utc)
+        created = transform_timezone(created)
+        updated = transform_timezone(updated)
 
-        if updated.tzinfo is None:
-            updated = updated.replace(tzinfo=timezone.utc)
-        else:
-            updated = updated.astimezone(timezone.utc)
-        
         # 注入数据
         page.meta["document_dates"] = {
             "dates": {
@@ -192,7 +184,7 @@ class DocumentDatesPlugin(BasePlugin):
             },
             "authors": authors
         }
-        
+
         # 检查是否需要排除
         if is_excluded(rel_path, self._exclude_patterns):
             return markdown

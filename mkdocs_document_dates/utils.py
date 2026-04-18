@@ -10,7 +10,7 @@ import re
 import math
 from pathlib import Path
 from operator import itemgetter
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 from mkdocs.structure.files import Files
 
@@ -524,3 +524,10 @@ def analyze_markdown(md: str) -> list:
     minutes = max(1, math.ceil(seconds / 60))
 
     return summary, minutes
+
+def transform_timezone(_time):
+    if _time.tzinfo is None:
+        _time = _time.replace(tzinfo=timezone.utc)
+    else:
+        _time = _time.astimezone(timezone.utc)
+    return _time
