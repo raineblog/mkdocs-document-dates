@@ -50,19 +50,9 @@ class DocumentDatesPlugin(BasePlugin):
         self.recent_docs_html = None
         self.recent_enable = False
         self._exclude_patterns = []
-        self.base_url: str = ""
-
-    def _make_url(self, path: str):
-        return self.base_url + '/' + path
 
     def on_config(self, config):
         docs_dir_path = Path(config['docs_dir'])
-
-        site_url = (config.get('site_url') or '').strip()
-        if not site_url or site_url in ('/', '.'):
-            self.base_url = '/'
-        else:
-            self.base_url = site_url.rstrip('/')
 
         # 加载 author 配置
         authors_file = docs_dir_path / 'authors.yml'
@@ -194,10 +184,14 @@ class DocumentDatesPlugin(BasePlugin):
         else:
             updated = updated.astimezone(timezone.utc)
         
-        # 在排除前暴露 meta 信息给前端使用
-        page.meta['document_dates_created'] = created.strftime("%Y-%m-%d %H:%M")
-        page.meta['document_dates_updated'] = updated.strftime("%Y-%m-%d %H:%M")
-        page.meta['document_dates_authors'] = authors
+        # 注入数据
+        page.meta["document_dates"] = {
+            "dates": {
+                "created": created.strftime("%Y-%m-%d %H:%M"),
+                "updated": updated.strftime("%Y-%m-%d %H:%M"),
+            },
+            "authors": authors
+        }
         
         # 检查是否需要排除
         if is_excluded(rel_path, self._exclude_patterns):
@@ -295,9 +289,6 @@ class DocumentDatesPlugin(BasePlugin):
         except Exception:
             env.globals["HAS_LANGUAGE_TEMPLATE"] = False
 
-
-        env.filters['make_url'] = self._make_url
-
         # 获取模板并渲染
         template = env.get_template("recently_updated_group.html")
         return template.render(
@@ -305,6 +296,7 @@ class DocumentDatesPlugin(BasePlugin):
             summary_lines=summary_lines,
             config=config
         )
+
 
     def _load_meta_date(self, meta, field_names):
         for field in field_names:

@@ -270,7 +270,7 @@
     {%- set readtime = doc.readtime | default(0) %}
     {%- set tags = doc.tags | default([]) %}
     <div class="article-card">
-        <a class="card-header" href="{{ origin_url | make_url }}" target="_blank">
+        <a class="card-header" href="{{ url }}" target="_blank">
             <div class="card-title">{{ title }}</div>
             <time class="dd-timeago card-date" datetime="{{ updated_dt }}">{{ updated }}</time>
         </a>
