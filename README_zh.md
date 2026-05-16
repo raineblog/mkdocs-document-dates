@@ -26,6 +26,8 @@
 | git-revision-date-localized<br />git-authors |  ＞ 3 s   |  ＞ 30 s   |    O(n)    |
 | document-dates              | < 0.1 s  | < 0.15 s  |    O(1)     |
 
+> 它比 `git-revision-date-localized` 和 `git-authors` 快 20~500 倍
+
 ## 安装
 
 ```bash
@@ -65,7 +67,7 @@ plugins:
 - [模板变量](https://jaywhj.netlify.app/document-dates-zh#%E6%A8%A1%E6%9D%BF%E5%8F%98%E9%87%8F)：可用于优化 sitemap.xml 以便优化站点 SEO
 - [最近更新模块](https://jaywhj.netlify.app/document-dates-zh#%E6%9C%80%E8%BF%91%E6%9B%B4%E6%96%B0%E6%A8%A1%E5%9D%97)：启用最近更新的文档列表（按更新日期倒序排列），这特别适合拥有大量文档的站点，方便读者快速浏览新内容
 - [本地化语言](https://jaywhj.netlify.app/document-dates-zh#%E6%9C%AC%E5%9C%B0%E5%8C%96%E8%AF%AD%E8%A8%80)：为 `timeago` 和 `tooltip` 补充更多本地化语言
-- [开发小故事](https://jaywhj.netlify.app/document-dates-zh#%E5%BC%80%E5%8F%91%E5%B0%8F%E6%95%85%E4%BA%8B)：描述了插件的由来、开发遇到的难点及解决方案、产品设计原则与方向
+- [开发者 API](https://jaywhj.netlify.app/document-dates-zh#%E5%BC%80%E5%8F%91%E8%80%85-API): 为开发人员提供了日期数据 API，便于在其他插件或钩子中检索精确日期
 
 具体内容参见文档：https://jaywhj.netlify.app/document-dates-zh
 

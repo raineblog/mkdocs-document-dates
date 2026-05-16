@@ -18,6 +18,44 @@ logger = logging.getLogger("mkdocs.plugins.document_dates")
 logger.setLevel(logging.WARNING)  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
 
+def load_dates_and_authors(docs_dir_path: Path, files: Files):
+
+    # git 创建日期
+    created_data = load_git_metadata(docs_dir_path)
+
+    # 覆盖 jsonl 创建日期
+    jsonl_cache_file = docs_dir_path / '.dates_cache.jsonl'
+    if jsonl_cache_file.exists():
+        jsonl_cache = read_jsonl_cache(jsonl_cache_file)
+        for filename, new_info in jsonl_cache.items():
+            if filename in created_data:
+                created_data[filename].update(new_info)
+
+    # git 更新日期
+    updated_data = load_git_last_updated_dates(docs_dir_path)
+
+    for file in files:
+        if file.inclusion.is_excluded():
+            continue
+        if not file.src_path.endswith('.md'):
+            continue
+        rel_path = getattr(file, 'src_uri')
+
+        # created: timestamp -> datetime
+        cache = created_data.setdefault(rel_path, {})
+        created_ts = cache.get('created')
+        cache['created'] = (
+            datetime.fromtimestamp(created_ts, tz=timezone.utc)
+            if created_ts is not None
+            else load_file_creation_date(file.abs_src_path)
+        )
+
+        # updated: timestamp -> datetime
+        mtime = updated_data.get(rel_path, os.path.getmtime(file.abs_src_path))
+        created_data[rel_path]['updated'] = datetime.fromtimestamp(mtime, tz=timezone.utc)
+
+    return created_data
+
 def compile_exclude_patterns(exclude_list):
     if not exclude_list:
         return []
@@ -37,34 +75,34 @@ def is_excluded(path, patterns):
                 return True
     return False
 
-def load_file_creation_date(file_path):
+def load_file_creation_date(file_path) -> datetime:
     try:
         stat = os.stat(file_path)
         system = platform.system().lower()
         if system.startswith('win'):  # Windows
-            return datetime.fromtimestamp(stat.st_ctime)
+            return datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc)
         elif system == 'darwin':  # macOS
             try:
-                return datetime.fromtimestamp(stat.st_birthtime)
+                return datetime.fromtimestamp(stat.st_birthtime, tz=timezone.utc)
             except AttributeError:
-                return datetime.fromtimestamp(stat.st_ctime)
+                return datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc)
         else:  # Linux, 没有创建时间，使用修改时间
-            return datetime.fromtimestamp(stat.st_mtime)
+            return datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
     except (OSError, ValueError) as e:
         logger.error(f"Failed to load file creation date for {file_path}: {e}")
-        return datetime.now()
+        return datetime.now(timezone.utc)
 
-def load_git_first_commit_date(file_path):
+def load_git_first_commit_date(file_path) -> datetime:
     try:
         # git log --reverse --format="%aI" -- {file_path} | head -n 1
-        cmd_list = ['git', 'log', '--reverse', '--format=%aI', '--', file_path]
+        cmd_list = ['git', 'log', '--reverse', '--format=%at', '--', file_path]
         process = subprocess.run(cmd_list, capture_output=True, encoding='utf-8')
         if process.returncode == 0 and process.stdout.strip():
-            first_line = process.stdout.partition('\n')[0].strip()
-            return datetime.fromisoformat(first_line)
+            first_line = int(process.stdout.partition('\n')[0].strip())
+            return datetime.fromtimestamp(first_line, tz=timezone.utc)
     except Exception as e:
         logger.info(f"Error load git first commit date for {file_path}: {e}")
-    return None
+    return datetime.now(timezone.utc)
 
 def load_git_metadata(docs_dir_path: Path):
     dates_cache = {}
@@ -75,7 +113,7 @@ def load_git_metadata(docs_dir_path: Path):
         ).strip())
         rel_docs_path = docs_dir_path.relative_to(git_root).as_posix()
 
-        cmd = ['git', 'log', '--reverse', '--no-merges', '--use-mailmap', '--name-only', '--format=%aN|%aE|%aI', f'--relative={rel_docs_path}', '--', '*.md']
+        cmd = ['git', '-c', 'core.quotepath=false', 'log', '--reverse', '--no-merges', '--use-mailmap', '--name-only', '--format=%aN|%aE|%at', f'--relative={rel_docs_path}', '--', '*.md']
         process = subprocess.run(cmd, cwd=docs_dir_path, capture_output=True, encoding='utf-8')
         if process.returncode == 0:
             authors_dict = defaultdict(dict)
@@ -94,7 +132,7 @@ def load_git_metadata(docs_dir_path: Path):
                         # a.巧用 Python 字典的 setdefault 特性来去重（setdefault 为不存在的键提供初始值，不会覆盖已有值）
                         # b.巧用 Python 字典的插入顺序特性来保留内容插入顺序（Python 3.7+ 字典会保持插入顺序）
                     authors_dict[line].setdefault((name, email), None)
-                    first_commit.setdefault(line, created)
+                    first_commit.setdefault(line, int(created))
 
             # 构建最终的缓存数据
             for file_path in first_commit:
@@ -119,11 +157,11 @@ def load_git_last_updated_dates(docs_dir_path: Path):
         ).strip())
         rel_docs_path = docs_dir_path.relative_to(git_root).as_posix()
 
-        cmd = ['git', 'log', '--no-merges', '--use-mailmap', '--format=%aN|%aE|%at', '--name-only', f'--relative={rel_docs_path}', '--', '*.md']
+        cmd = ['git', '-c', 'core.quotepath=false', 'log', '--no-merges', '--use-mailmap', '--format=%aN|%aE|%at', '--name-only', f'--relative={rel_docs_path}', '--', '*.md']
         process = subprocess.run(cmd, cwd=docs_dir_path, capture_output=True, encoding='utf-8')
         if process.returncode == 0:
             result = subprocess.run(
-                ["git", "ls-files", "*.md"],
+                ['git', '-c', 'core.quotepath=false', 'ls-files', '*.md'],
                 cwd=docs_dir_path, capture_output=True, encoding='utf-8'
             )
             # 只记录已跟踪的文件（还有已删除、重命名、不再跟踪）
@@ -135,7 +173,7 @@ def load_git_last_updated_dates(docs_dir_path: Path):
                 if not line:
                     continue
                 if '|' in line:
-                    ts = float(line.split('|')[2])
+                    ts = int(line.split('|')[2])
                 elif line.endswith('.md') and line in tracked_files and ts:
                     # 只记录第一次出现的文件，即最近一次提交（setdefault 机制不会覆盖已有值）
                     doc_mtime_map.setdefault(line, ts)
@@ -154,14 +192,13 @@ def get_recently_updated_files(existing_dates: dict, files: Files, exclude_list:
                 continue
             if not file.src_path.endswith('.md'):
                 continue
-            rel_path = getattr(file, 'src_uri', file.src_path)
-            if os.sep != '/':
-                rel_path = rel_path.replace(os.sep, '/')
+            rel_path = getattr(file, 'src_uri')
             if is_excluded(rel_path, exclude_list):
                 continue
 
             # 优先从现有数据获取 mtime，如果不存在则 fallback 到文件系统 mtime
-            mtime = existing_dates.get(rel_path, os.path.getmtime(file.abs_src_path))
+            exist_updated: datetime = existing_dates.get(rel_path, {}).get('updated')
+            mtime = exist_updated.timestamp() if exist_updated else os.path.getmtime(file.abs_src_path)
 
             # 获取文档其它信息
             title = file.page.title if file.page and file.page.title else file.name
@@ -194,23 +231,17 @@ def get_recently_updated_files(existing_dates: dict, files: Files, exclude_list:
                 "readtime": readtime,
                 "tags": tags,
             })
-            # existing_map[rel_path] = mtime
 
         # 构建最近更新列表
         if files_meta:
-            fmt_full = "%Y-%m-%d %H:%M:%S"
-            fmt_date = "%Y-%m-%d"
             # heapq 取 top limit
-            top_results = heapq.nlargest(limit, files_meta, key=itemgetter("updated_ts"))
+            recently_updated_results = heapq.nlargest(limit, files_meta, key=itemgetter("updated_ts"))
 
-            for doc in top_results:
-                dt = datetime.fromtimestamp(doc["updated_ts"])
-
-                recently_updated_results.append({
-                    **doc,
-                    "updated_dt": dt.strftime(fmt_full),
-                    "updated": dt.strftime(fmt_date),
-                })
+            for doc in recently_updated_results:
+                # timestamp -> utc datetime -> local datetime
+                dt = datetime.fromtimestamp(doc["updated_ts"], tz=timezone.utc).astimezone()
+                doc["updated_dt"] = dt.isoformat()
+                doc["updated"] = dt.date().isoformat()
 
     return recently_updated_results
 
@@ -224,10 +255,16 @@ def read_jsonl_cache(jsonl_file: Path):
                         entry = json.loads(line.strip())
                         if entry and isinstance(entry, dict) and len(entry) == 1:
                             file_path, file_info = next(iter(entry.items()))
-                            dates_cache[file_path] = file_info
-                    except (json.JSONDecodeError, StopIteration) as e:
+                            if isinstance(file_info, dict):
+                                created = file_info.get('created')
+                                if isinstance(created, str):
+                                    file_info['created'] = int(datetime.fromisoformat(created).timestamp())
+                                elif isinstance(created, (int, float)):
+                                    file_info['created'] = int(created)
+                                dates_cache[file_path] = file_info
+                    except (json.JSONDecodeError, StopIteration, ValueError, TypeError,) as e:
                         logger.warning(f"Skipping invalid JSONL line: {e}")
-        except IOError as e:
+        except OSError as e:
             logger.warning(f"Error reading from '.dates_cache.jsonl': {str(e)}")
     return dates_cache
 
@@ -238,7 +275,11 @@ def write_jsonl_cache(jsonl_file: Path, dates_cache, tracked_files):
         with open(temp_file, 'w', encoding='utf-8') as f:
             for file_path in tracked_files:
                 if file_path in dates_cache:
-                    entry = {file_path: dates_cache[file_path]}
+                    file_info = dates_cache[file_path].copy()
+                    created = file_info.get('created')
+                    if created is not None:
+                        file_info['created'] = datetime.fromtimestamp(created, tz=timezone.utc).isoformat()
+                    entry = {file_path: file_info}
                     f.write(json.dumps(entry, ensure_ascii=False) + '\n')
         
         # 替换原文件
@@ -248,7 +289,7 @@ def write_jsonl_cache(jsonl_file: Path, dates_cache, tracked_files):
         subprocess.run(["git", "add", str(jsonl_file)], check=True)
         logger.info(f"Successfully updated JSONL cache file: {jsonl_file}")
         return True
-    except (IOError, json.JSONDecodeError) as e:
+    except OSError as e:
         logger.warning(f"Failed to write JSONL cache file {jsonl_file}: {e}")
     except Exception as e:
         logger.warning(f"Failed to add JSONL cache file to git: {e}")

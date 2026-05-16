@@ -2,6 +2,66 @@
 
 
 
+## v3.8.2 (2026-05-09)
+
+### en
+
+- Added compatibility with `mkdocs properdocs` related
+- Fixed format inconsistency when reading and writing to cache
+- Fixed build issue when site_url is not set
+
+### zh
+
+- 增加了与 `mkdocs properdocs` 相关的兼容性
+- 修复了读写缓存时的格式不一致问题
+- 修复了未设置 site_url 时的构建问题
+
+
+
+## v3.8.0 (2026-04-24)
+
+### en
+
+- Refactored data API interface
+- Updated sitemap template
+- Fixed issue with file paths containing CJKs
+
+### zh
+
+- 重构了数据 API 接口
+- 更新了 sitemap 模板
+- 修复了包含中日韩文字的文件路径问题
+
+
+
+## v3.7.4 (2026-04-17)
+
+### en
+
+- Add support for ProperDocs
+- Fixed URL path compatibility issue for the Recently Updated List
+- Adjusted the way template variables are accessed for recently updated module
+
+### zh
+
+- 添加对 ProperDocs 的支持
+- 修复了最近更新列表的 URL 路径兼容性问题
+- 调整了最近更新模块的模板变量访问方式
+
+
+
+## v3.7.3 (2026-03-31)
+
+### en
+
+- Fixed a bug in summary parsing
+
+### zh
+
+- 修复了摘要解析时的一个bug
+
+
+
 ## v3.7.2 (2026-03-30)
 
 ### en
