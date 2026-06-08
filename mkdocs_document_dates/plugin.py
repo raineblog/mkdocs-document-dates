@@ -9,6 +9,7 @@ from mkdocs.config import config_options
 from mkdocs.structure.pages import Page
 from mkdocs.utils import get_relative_url
 from urllib.parse import urlparse
+from babel.dates import format_datetime
 from .utils import compile_exclude_patterns, is_excluded, get_recently_updated_files, load_dates_and_authors
 
 logger = logging.getLogger("mkdocs.plugins.document_dates")
@@ -62,7 +63,7 @@ class DocumentDatesPlugin(BasePlugin):
 
         # 加载 author 配置
         authors_file = None
-        for name in ("authors.yml", "authors.yaml"):
+        for name in ('authors.yml', 'authors.yaml'):
             candidate = docs_dir_path / name
             if candidate.exists():
                 authors_file = candidate
@@ -79,17 +80,7 @@ class DocumentDatesPlugin(BasePlugin):
         if authors_file:
             self._load_authors_from_yaml(authors_file)
 
-        # 复制配置文件到用户目录（如果不存在）
-        dest_dir = docs_dir_path / 'assets' / 'document_dates'
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        config_files = ['user.config.css', 'user.config.js']
-        for config_file in config_files:
-            source_config = Path(__file__).parent / 'static' / 'config' / config_file
-            target_config = dest_dir / config_file
-            if not target_config.exists():
-                shutil.copy2(source_config, target_config)
-
-        # 添加离线 Google Fonts Icons: https://fonts.google.com/icons
+        # 添加离线 Google Fonts Icons, https://fonts.google.com/icons
         # material_icons_url = 'https://fonts.googleapis.com/icon?family=Material+Icons'
         material_icons_url = 'assets/document_dates/fonts/material-icons.css'
         config['extra_css'].append(material_icons_url)
@@ -126,23 +117,36 @@ class DocumentDatesPlugin(BasePlugin):
         tippy_css_dir = Path(__file__).parent / 'static' / 'tippy'
         for css_file in tippy_css_dir.glob('*.css'):
             config['extra_css'].append(f'assets/document_dates/tippy/{css_file.name}')
-        
-        # 添加自定义 CSS 文件
-        config['extra_css'].extend([
-            'assets/document_dates/core/core.css',
-            'assets/document_dates/user.config.css'
-        ])
-        
+
+        # User override config
+        override_dir = docs_dir_path / 'assets' / 'document_dates'
+        override_css = override_dir / 'config.css'
+        override_js = override_dir / 'config.js'
+
+        # Plugin CSS
+        config['extra_css'].append('assets/document_dates/core/core.css')
+
+        # 用户 override CSS（可选）
+        if override_css.exists():
+            config['extra_css'].append('assets/document_dates/config.css')
+
         # 按顺序添加 Tippy JS 文件
         js_core_files = ['popper.min.js', 'tippy.umd.min.js']
         for js_file in js_core_files:
             config['extra_javascript'].append(f'assets/document_dates/tippy/{js_file}')
-        
-        # 添加自定义 JS 文件
+
+        # Plugin JS
         config['extra_javascript'].extend([
             'assets/document_dates/core/md5.min.js',
             'assets/document_dates/core/default.config.js',
-            'assets/document_dates/user.config.js',
+        ])
+
+        # 用户 override JS（可选）
+        if override_js.exists():
+            config['extra_javascript'].append('assets/document_dates/config.js')
+
+        # core runtime
+        config['extra_javascript'].extend([
             'assets/document_dates/core/utils.js',
             'assets/document_dates/core/core.js'
         ])
@@ -202,10 +206,14 @@ class DocumentDatesPlugin(BasePlugin):
         # 检查是否需要排除
         if is_excluded(rel_path, self._exclude_patterns):
             return markdown
-        
+
+        # 增强鲁棒性，碰到异常数据提前返回
+        if not created or not updated:
+            return markdown
+
         # 生成日期和作者信息 HTML
         info_html = self._generate_html_info(page.meta, created, updated, authors)
-        
+
         # 将信息写入 markdown
         return self._insert_date_info(markdown, info_html)
 
@@ -384,11 +392,38 @@ class DocumentDatesPlugin(BasePlugin):
 
 
     def _formatting_date(self, date: datetime):
-        if self.config['type'] == 'timeago':
-            return ""
-        elif self.config['type'] == 'datetime':
-            return date.strftime(f"{self.config['date_format']} {self.config['time_format']}")
-        return date.strftime(self.config['date_format'])
+        locale = self.config.get('locale', 'en')
+
+        # 兼容旧 strftime 配置，转换为 Babel/ICU 格式
+        date_format = (
+            self.config['date_format']
+            .replace('%Y', 'yyyy')
+            .replace('%y', 'yy')
+            .replace('%m', 'MM')
+            .replace('%d', 'dd')
+            .replace('%B', 'MMMM')
+            .replace('%b', 'MMM')
+        )
+
+        time_format = (
+            self.config['time_format']
+            .replace('%H', 'HH')
+            .replace('%I', 'hh')
+            .replace('%M', 'mm')
+            .replace('%S', 'ss')
+            .replace('%p', 'a')
+        )
+
+        if self.config['type'] == 'datetime':
+            fmt = f"{date_format} {time_format}"
+        else:
+            fmt = date_format
+
+        return format_datetime(
+            date,
+            format=fmt,
+            locale=locale
+        )
 
     def _generate_html_info(self, meta, created: datetime, updated: datetime, authors=None):
         try:
@@ -408,11 +443,11 @@ class DocumentDatesPlugin(BasePlugin):
             html_parts.append(f"<div class='document-dates-plugin' locale='{self.config['locale']}'>")
 
             def build_time_icon(time_obj: datetime, icon: str):
-                formatted = time_obj.strftime(self.config['date_format'])
+                formatted = self._formatting_date(time_obj)
                 return (
                     f"<span class='dd-item' data-tippy-content data-tippy-raw='{formatted}'>"
                     f"<span class='material-icons' data-icon='{icon}'></span>"
-                    f"<time datetime='{time_obj.astimezone().isoformat()}'>{self._formatting_date(time_obj)}</time>"
+                    f"<time datetime='{time_obj.astimezone().isoformat()}'>{formatted}</time>"
                     f"</span>"
                 )
 

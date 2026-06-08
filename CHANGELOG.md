@@ -2,6 +2,34 @@
 
 
 
+## v3.8.6 (2026-06-05)
+
+### en
+
+- Fixed the bug for the edge case of Git's `--relative` argument
+
+### zh
+
+- 修复了 git '--relative' 参数的特例情况的 bug
+
+
+
+## v3.8.5 (2026-05-24)
+
+### en
+
+- Adjusted the way to configure user override styles to not actively copy the configuration template file to the docs directory
+- Formatting dates with babel
+- Git authors add `co-author` support
+
+### zh
+
+- 调整了用户覆盖样式的配置方式，不再主动复制配置模板文件到 docs 目录
+- 使用 babel 格式化日期
+- Git authors 添加对 `co-author` 的支持
+
+
+
 ## v3.8.2 (2026-05-09)
 
 ### en
@@ -317,8 +345,8 @@
 - Adjust `locale` to automatic mode, intelligently recognize user languages, and dynamically adapt to their localized languages without manual assignment
 - The icon supports offline mode
 - Adjust the selection policy for the creation time when caching
-- Optimize multi-language customization and make configuration super easy, see [user.config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/user.config.js)
-- Optimize other custom configuration options for easier use, see [user.config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/user.config.js) 
+- Optimize multi-language customization and make configuration super easy, see [config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/config.js)
+- Optimize other custom configuration options for easier use, see [config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/config.js) 
 - Updated template usage examples, see [source-file.html](https://github.com/jaywhj/mkdocs-document-dates/blob/main/templates/overrides/partials/source-file.html)
 
 ### zh
@@ -326,8 +354,8 @@
 - 调整 locale 为自动模式，智能识别用户语种，动态适配其本地化语言，无需手动指定（配置项保留）
 - 图标支持离线模式
 - 调整缓存时创建时间的择取策略
-- 优化多语言自定义方式，配置超简单，具体见 [user.config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/user.config.js) 
-- 优化其他自定义配置选项，使用更简单，具体见 [user.config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/user.config.js)  
+- 优化多语言自定义方式，配置超简单，具体见 [config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/config.js) 
+- 优化其他自定义配置选项，使用更简单，具体见 [config.js](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/config.js)  
 - 更新了模板使用示例，具体见 [source-file.html](https://github.com/jaywhj/mkdocs-document-dates/blob/main/templates/overrides/partials/source-file.html)
 
 
