@@ -608,6 +608,6 @@ def analyze_markdown(md: str, readtime_wpm: int = DEFAULT_WPM, readtime_wpm_cjk:
     seconds += images * 2
 
     minutes = max(1, math.ceil(seconds / 60))
-    summary = MD_SYNTAX_RE.sub("", "  ".join(summary_lines)).strip()
+    summary = html.escape(MD_SYNTAX_RE.sub("", "  ".join(summary_lines)).strip())
 
     return minutes, summary
