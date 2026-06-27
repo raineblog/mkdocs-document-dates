@@ -10,15 +10,15 @@ jobs:
   build-docs:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@1edb4ca457f300186638069f7278ef864819d9b6 # v5.3.1
       with:
         enable-cache: true
         cache-dependency-glob: "uv.lock"
     - name: Set up Python
       run: uv python install 3.12
     - name: Install dependencies
-      run: uv sync --all-extras
+      run: uv sync --extra docs --locked --python 3.12
     - name: Build documentation
-      run: uv run properdocs build -f properdocs.yml
+      run: uv run --python 3.12 properdocs build -f properdocs.yml

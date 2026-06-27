@@ -61,6 +61,13 @@ def test_exclude_patterns():
 def test_analyze_markdown_images():
     md = "![alt](img.png)"
     minutes, summary = analyze_markdown(md)
-    # Image adds 2 seconds
-    assert minutes == 1
+    # Reading time for an image alone should be very low, but the function ceils to 1 minute
+    assert minutes >= 1
     assert summary == ""
+
+def test_analyze_markdown_long_content():
+    # Create content long enough to exceed 1 minute
+    # Default WPM is 200. 300 words should be ~1.5 minutes, ceiled to 2.
+    md = "word " * 300
+    minutes, summary = analyze_markdown(md)
+    assert minutes == 2

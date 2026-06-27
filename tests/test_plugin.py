@@ -41,11 +41,8 @@ def test_on_config_basic():
 
     config = Config()
 
-    with patch('mkdocs_document_dates.plugin.Path') as mock_path:
-        # Mocking Path(config.docs_dir) / name
-        mock_path.return_value.__truediv__.return_value.exists.return_value = False
-        # Mocking Path(__file__).parent / 'static' / 'tippy'
-        # We need to be careful with __file__ in the plugin
+    # Patch only Path.exists to return False to avoid complex nested mocking of Path divisions and globbing
+    with patch('mkdocs_document_dates.plugin.Path.exists', return_value=False):
         plugin.on_config(config)
 
     assert any('material-icons.css' in css for css in config['extra_css'])
