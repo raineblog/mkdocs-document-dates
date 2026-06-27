@@ -11,7 +11,9 @@ requires-python = ">=3.9"
 license = "MIT"
 authors = [{ name = "Aaron Wang", email = "aaronwqt@gmail.com" }]
 dependencies = [
-  "babel>=2.16"
+  "babel>=2.16",
+  "pyyaml>=6.0",
+  "mkdocs>=1.6,<2"
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -20,8 +22,13 @@ classifiers = [
 
 [project.optional-dependencies]
 docs = [
-  "mkdocs>=1.6,<=1.6.1",
   "properdocs>=1.6.5",
+  "mkdocs-material>=9.5.0",
+]
+test = [
+  "pytest>=8.0.0",
+  "pytest-cov>=4.1.0",
+  "pytest-mock>=3.12.0",
 ]
 
 [project.urls]
@@ -54,3 +61,10 @@ mkdocs_document_dates = [
   ".DS_Store",
   "**/.DS_Store",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+
+[tool.coverage.run]
+source = ["mkdocs_document_dates"]
