@@ -7,7 +7,7 @@ name = "mkdocs-document-dates"
 version = "3.8.7"
 description = "A new generation MkDocs plugin for displaying exact creation date, last updated date, authors, email of documents"
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 license = "MIT"
 authors = [{ name = "Aaron Wang", email = "aaronwqt@gmail.com" }]
 dependencies = [
