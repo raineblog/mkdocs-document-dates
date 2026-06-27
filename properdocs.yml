@@ -1,0 +1,13 @@
+site_name: mkdocs-document-dates
+theme:
+  name: material
+
+plugins:
+  - search
+  - document-dates:
+      show_created: true
+      show_updated: true
+      show_author: true
+
+nav:
+  - Home: index.md
