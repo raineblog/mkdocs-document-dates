@@ -255,6 +255,10 @@ version = "3.8.7"
 source = { editable = "." }
 dependencies = [
     { name = "babel" },
+]
+
+[package.optional-dependencies]
+docs = [
     { name = "mkdocs" },
     { name = "properdocs" },
 ]
@@ -262,9 +266,10 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "babel", specifier = ">=2.16" },
-    { name = "mkdocs", specifier = ">=1.6,<=1.6.1" },
-    { name = "properdocs", specifier = ">=1.6.5" },
+    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.6,<=1.6.1" },
+    { name = "properdocs", marker = "extra == 'docs'", specifier = ">=1.6.5" },
 ]
+provides-extras = ["docs"]
 
 [[package]]
 name = "mkdocs-get-deps"
