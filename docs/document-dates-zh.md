@@ -115,14 +115,14 @@ flowchart LR
 !!! quote ""
 
     === "创建日期"
-
+    
         1. 优先读取 Front Matter 中的自定义创建日期
         2. 其次读取缓存文件中的创建日期
         3. 再次读取文档「首次 git commit 日期」作为创建日期
         4. 最后读取文件的创建时间
-
+    
     === "最后更新日期"
-
+    
         1. 优先读取 Front Matter 中的自定义最后更新日期
         2. 其次读取文档「最近一次 git commit 日期」作为最后更新日期
         3. 最后读取文件的修改时间
@@ -202,7 +202,7 @@ flowchart LR
 !!! quote ""
 
     === "说明"
-
+    
         1. 优先读取 Front Matter 中的自定义作者
         2. 其次读取 Git 作者
         3. 再次读取 mkdocs.yml 中的 site_author
@@ -294,11 +294,11 @@ flowchart LR
 !!! quote ""
 
     === "网络头像"
-
+    
         根据 Git 的 `user.email` 从 Gravatar 或 Weavatar 加载
-
+    
     === "字符头像"
-
+    
         根据作者姓名自动生成，规则如下：
         1. 提取 initials：英文取首字母组合，中文取首字
         2. 生成动态背景色：基于名字哈希值生成 HSL 颜色
@@ -317,7 +317,7 @@ plugins:
       ...
       show_created: true    # 显示创建日期: true false, 默认: true
       show_updated: true    # 显示最后更新日期: true false, 默认: true
-      show_author: true     # 显示作者: true(头像) text(文本) false(隐藏), 默认: true
+      show_author: true     # 显示作者: true(头像) text(文本) false(隐藏), 默认: true 
 ```
 
 **局部开关**，在文档的 Front Matter 中配置（字段一样）：
@@ -508,14 +508,14 @@ plugins:
 !!! quote ""
 
     **load_dates_and_authors(docs_dir_path: Path, files: Files)**
-
+    
     Parameters:
-
+    
     - `docs_dir_path` (Path) - 项目文档目录路径
     - `files` (Files) - 全部文件集合
-
+    
     Returns:
-
+    
     - `Dict[str, Dict[str, Any]]` - 根据文档相对路径、日期、作者和其他信息建立的包含所有文档的字典
 
 返回数据结构如下：
@@ -590,7 +590,7 @@ def on_page_markdown(self, markdown, page, config, files):
     - 该函数不解析 Markdown 内容，因此 frontmatter 中的日期和作者需要单独处理。例如，你可以优先获取用户在 frontmatter 中手动配置的日期与作者，如果不存在这些值，再调用此函数来获取这些信息，像这样：
     ``` py { data-fold="0" }
     ...
-
+    
     def _parse_date(self, value: str | None, default: datetime | None) -> datetime | None:
         if not value:
             return default
@@ -598,15 +598,15 @@ def on_page_markdown(self, markdown, page, config, files):
             return datetime.fromisoformat(value).astimezone()
         except ValueError:
             return default
-
+    
     def on_page_markdown(self, markdown, page, config, files):
-
+    
         entry = self.date_data.get(page.file.src_uri, {})
-
+    
         # Overrides default values via meta fields
         created = self._parse_date(page.meta.get("created"), entry.get("created"))
         updated = self._parse_date(page.meta.get("updated"), entry.get("updated"))
-
+    
         ...
     ```
 
@@ -617,15 +617,15 @@ def on_page_markdown(self, markdown, page, config, files):
 !!! quote ""
 
     **analyze_markdown(md: str, readtime_wpm: int = 240, readtime_wpm_cjk: int = 480)**
-
+    
     Parameters:
-
+    
     - `md` (str) - Markdown 内容
     - `readtime_wpm` (int, **optional**) - 空格分隔语言（英语、西班牙语、法语、德语、葡萄牙语、俄语等）的每分钟阅读速率，默认为 240 词/分钟
     - `readtime_wpm_cjk` (int, **optional**) - 无空格分隔语言（中日韩）的每分钟阅读速率，默认为 480 字/分钟
-
+    
     Returns:
-
+    
     - `tuple[int, str]`
         - `readtime` (int) - 阅读时间（分）
         - `summary` (str) - 简明摘要
@@ -656,7 +656,7 @@ def on_page_markdown(self, markdown, page, config, files):
 
 ## 开发小故事
 
-一个可有可无、微不足道的小插件，没事的朋友可以看看 \^\_\^
+一个可有可无、微不足道的小插件，没事的朋友可以看看 \^\_\^ 
 
 - **起源**：
     - 是因为 [git-revision-date-localized](https://github.com/timvink/mkdocs-git-revision-date-localized-plugin) ，一个很棒的项目。在2024年底使用时，发现我这本地用不了，因为我的 mkdocs 文档没有纳入 git 管理，然后我就不理解为什么不读取文件时间戳，而要用 git 时间戳，而且文件时间戳更准确，还给作者提了 issue，结果等了一周左右没得到回复（后面作者回复了，人不错，估计他当时在忙没来得及），然后就想要不自己试试，就诞生了，诞生于2025年2月

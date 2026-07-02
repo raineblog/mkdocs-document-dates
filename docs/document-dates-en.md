@@ -120,7 +120,7 @@ flowchart LR
         2. Then read the creation date in the cache file
         3. Next read the document’s first git commit date as the creation date
         4. Finally read the file’s creation time
-
+    
     === "Last updated"
 
         1. Prioritize reading the custom last updated date in Front Matter
@@ -202,7 +202,7 @@ flowchart LR
 !!! quote ""
 
     === "Description"
-
+    
         1. Prioritize reading custom authors in Front Matter
         2. Then read the Git author
         3. Next read the site_author in mkdocs.yml
@@ -285,7 +285,7 @@ flowchart LR
 - [x] `Front Matter` > `Online Avatar` > `Character Avatar`
 -->
 
-#### Customization
+#### Customization 
 
 Customizable via `avatar` field in [Enhanced author configuration](#Enhanced-author-configuration) (supports URL paths and local file paths).
 
@@ -317,7 +317,7 @@ plugins:
       ...
       show_created: true    # Show creation date: true false, default: true
       show_updated: true    # Show last updated date: true false, default: true
-      show_author: true     # Show author: true(avatar) text(text) false(hidden), default: true
+      show_author: true     # Show author: true(avatar) text(text) false(hidden), default: true 
 ```
 
 **Local Toggle**, configured in Front Matter (using the same field names):
@@ -481,7 +481,7 @@ The plugin's `tooltip` and `timeago` have built-in multi-language support, and t
 
 Built-in locales: `en zh zh_TW es fr de ar ja ko ru nl pt`
 
-Addition Method (choose one):
+Addition Method (choose one): 
 
 - In `config.js`, refer to [Part 3](https://github.com/jaywhj/mkdocs-document-dates/blob/main/mkdocs_document_dates/static/config/config.js) to add it by registering yourself
 - Submit a PR for Inclusion
@@ -657,7 +657,7 @@ Refer to [Reading Time Estimation](#Reading-Time-Estimation) for reading time ca
 
 ## Development Stories
 
-A dispensable, insignificant little plug-in, friends who have time can take a look \^\_\^
+A dispensable, insignificant little plug-in, friends who have time can take a look \^\_\^ 
 
 - **Origin**:
     - Because [git-revision-date-localized](https://github.com/timvink/mkdocs-git-revision-date-localized-plugin), a great project. When I used it at the end of 2024, I found that I couldn't use it locally because my mkdocs documentation was not included in git management, I don't understand why not read the file timestamp, but to use the git timestamp, and the file timestamp is exact, then raised an issue to the author, but didn't get a reply for about a week (the author had a reply later, nice guy, I guess he was busy at the time), and then I thought, why not try it myself, and so it was born, in February 2025
@@ -675,7 +675,7 @@ A dispensable, insignificant little plug-in, friends who have time can take a lo
         - Solution: skip unnecessary I/O access and reduce the number of I/O operations
 - **Improve**:
     - Since it's a newly developed plugin, it will be designed in the direction of **excellent products**, and the pursuit of the ultimate **ease of use, simplicity, personalization, intelligence**
-        - **Ease of use**: no complex configuration, only 2-3 commonly used configuration items, one-click templates are also provided for personalized
+        - **Ease of use**: no complex configuration, only 2-3 commonly used configuration items, one-click templates are also provided for personalized 
         - **Simplicity**: no unnecessary configuration, no-Git dependencies, no CI/CD configuration dependencies, no other package dependencies
         - **Personalization**: fully customizable and full control over the rendering logic, the plugin is only responsible for providing the data
         - **Intelligence**: Intelligent parsing of document date, author, avatar, intelligent recognition of the user's language and automatic adaptation
