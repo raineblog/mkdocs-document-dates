@@ -1,16 +1,8 @@
 # mkdocs-document-dates
 
-A new generation MkDocs plugin for displaying exact creation date, last updated date, authors, email of documents.
+Welcome to the documentation for **mkdocs-document-dates**, a new generation MkDocs plugin for displaying document dates and authors.
 
-## Features
+Please choose your language:
 
-- Works in any environment.
-- Elegant styling.
-- Multi-language support.
-
-## Usage
-
-```yaml
-plugins:
-  - document-dates
-```
+- [English Documentation](document-dates-en.md)
+- [中文文档](document-dates-zh.md)
