@@ -11,3 +11,5 @@ plugins:
 
 nav:
   - Home: index.md
+  - English Documentation: document-dates-en.md
+  - 中文文档: document-dates-zh.md

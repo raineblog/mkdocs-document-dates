@@ -13,7 +13,7 @@ authors = [{ name = "Aaron Wang", email = "aaronwqt@gmail.com" }]
 dependencies = [
   "babel>=2.16",
   "pyyaml>=6.0",
-  "mkdocs>=1.6,<2"
+  "mkdocs>=1.6,<2",
 ]
 classifiers = [
   "Programming Language :: Python :: 3",
