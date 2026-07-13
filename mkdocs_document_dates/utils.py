@@ -113,15 +113,18 @@ COAUTHOR_RE = re.compile(
 )
 def parse_commit_authors(name, email, body):
     authors = [(name, email)]
-    seen = {(name, email)}
+    # Co auth 会导致 mailmap 不生效，为了避免问题，暂时禁用对 co auth 的支持，如果上游更改，需要更新到正确的方案
+    # 我自己的想法是用 git check mailmap，但是这样新增了太多，而且还要缓存，比较复杂就不实现了
+    
+    # seen = {(name, email)}
 
-    for co_name, co_email in COAUTHOR_RE.findall(body):
-        author = (co_name, co_email)
-        if author in seen:
-            continue
+    # for co_name, co_email in COAUTHOR_RE.findall(body):
+    #     author = (co_name, co_email)
+    #     if author in seen:
+    #         continue
 
-        seen.add(author)
-        authors.append(author)
+    #     seen.add(author)
+    #     authors.append(author)
 
     return authors
 
