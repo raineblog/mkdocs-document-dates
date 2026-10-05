@@ -174,21 +174,23 @@ class DocumentDatesPlugin(BasePlugin):
         if "dates" not in page.meta["document_dates"]:
             page.meta["document_dates"]["dates"] = {}
 
-        # 获取和写入 authors 数据
-        authors1 = self._load_meta_author(page.meta, page.url)
-        authors2 = self._load_author_cached(rel_path, page, config)
-        authors = sorted(set(authors1 + authors2))
+        # 获取和写入 authors 数据（meta 与 git 来源合并，按 name+email 去重）
+        authors1 = self._load_meta_author(page.meta, page.url) or []
+        authors2 = self._load_author_cached(rel_path, page, config) or []
+        seen = set()
+        authors = []
+        for author in authors1 + authors2:
+            key = (author.name, author.email)
+            if key not in seen:
+                seen.add(key)
+                authors.append(author)
         page.meta["document_dates"]["authors"] = authors
 
         # 不使用 meta 的 created updated 数据
         # created = self._load_meta_date(page.meta, self.config['created_field_names'])
         # updated = self._load_meta_date(page.meta, self.config['updated_field_names'])
-        created = transform_timezone(cache.get('created'))
-        updated = transform_timezone(cache.get('updated'))
-        page.meta["document_dates"]["dates"]["created"] = created
-        page.meta["document_dates"]["dates"]["updated"] = updated
-        page.meta["document_dates_created"] = created.strftime("%Y-%m-%d %H:%M")
-        page.meta["document_dates_updated"] = updated.strftime("%Y-%m-%d %H:%M")
+        created = cache.get('created')
+        updated = cache.get('updated')
 
         # 检查是否需要排除
         if is_excluded(rel_path, self._exclude_patterns):
@@ -197,6 +199,16 @@ class DocumentDatesPlugin(BasePlugin):
         # 增强鲁棒性，碰到异常数据提前返回
         if not created or not updated:
             return markdown
+
+        # 时间信息自动转换为 UTC 时区
+        created = transform_timezone(created)
+        updated = transform_timezone(updated)
+
+        # 注入数据
+        page.meta["document_dates"]["dates"]["created"] = created
+        page.meta["document_dates"]["dates"]["updated"] = updated
+        page.meta["document_dates_created"] = created.strftime("%Y-%m-%d %H:%M")
+        page.meta["document_dates_updated"] = updated.strftime("%Y-%m-%d %H:%M")
 
         # 生成日期和作者信息 HTML
         info_html = self._generate_html_info(page.meta, created, updated, authors)
