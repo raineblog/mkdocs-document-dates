@@ -166,44 +166,29 @@ class DocumentDatesPlugin(BasePlugin):
     def on_page_markdown(self, markdown, page: Page, config, files):
         # 获取相对路径，src_uri 总是以"/"分隔
         rel_path = getattr(page.file, 'src_uri')
-
-        # 优先获取 page.meta 中的数据
-        created = self._load_meta_date(page.meta, self.config['created_field_names'])
-        updated = self._load_meta_date(page.meta, self.config['updated_field_names'])
-        authors = self._load_meta_author(page.meta, page.url)
-
-        # 如果 meta 数据存在，则存储
+        
+        # 准备缓存和数据路径
         cache = self.data_cached.setdefault(rel_path, {})
-        if created:
-            cache['created'] = created
-        else:
-            created = cache.get('created')
+        if "document_dates" not in page.meta:
+            page.meta["document_dates"] = {}
+        if "dates" not in page.meta["document_dates"]:
+            page.meta["document_dates"]["dates"] = {}
 
-        if updated:
-            cache['updated'] = updated
-        else:
-            updated = cache.get('updated')
+        # 获取和写入 authors 数据
+        authors1 = self._load_meta_author(page.meta, page.url)
+        authors2 = self._load_author_cached(rel_path, page, config)
+        authors = sorted(set(authors1 + authors2))
+        page.meta["document_dates"]["authors"] = authors
 
-        if not authors:
-            authors = self._load_author_cached(rel_path, page, config)
-
-        # 时间信息自动转换为 UTC 时区
-        created = transform_timezone(created)
-        updated = transform_timezone(updated)
-
-        # 注入数据
-        page.meta["document_dates"] = {
-            "dates": {
-                "created": created,
-                "updated": updated,
-            },
-            "authors": authors
-        }
-
-        # 在排除前暴露 meta 信息给前端使用（保留备用）
-        page.meta['document_dates_created'] = created.strftime("%Y-%m-%d %H:%M")
-        page.meta['document_dates_updated'] = updated.strftime("%Y-%m-%d %H:%M")
-        page.meta['document_dates_authors'] = authors
+        # 不使用 meta 的 created updated 数据
+        # created = self._load_meta_date(page.meta, self.config['created_field_names'])
+        # updated = self._load_meta_date(page.meta, self.config['updated_field_names'])
+        created = transform_timezone(cache.get('created'))
+        updated = transform_timezone(cache.get('updated'))
+        page.meta["document_dates"]["dates"]["created"] = created
+        page.meta["document_dates"]["dates"]["updated"] = updated
+        page.meta["document_dates_created"] = created.strftime("%Y-%m-%d %H:%M")
+        page.meta["document_dates_updated"] = updated.strftime("%Y-%m-%d %H:%M")
 
         # 检查是否需要排除
         if is_excluded(rel_path, self._exclude_patterns):
