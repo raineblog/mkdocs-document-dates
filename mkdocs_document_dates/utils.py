@@ -1,7 +1,6 @@
 import os
 import platform
 import json
-import html
 import heapq
 import logging
 import subprocess
@@ -22,9 +21,18 @@ DEFAULT_WPM = 240
 DEFAULT_WPM_CJK = 480
 
 def load_dates_and_authors(docs_dir_path: Path, files: Files):
+    docs_dir_path = Path(docs_dir_path).resolve()
 
     # git 创建日期
     created_data = load_git_metadata(docs_dir_path)
+
+    # Submodule files are gitlinks in the parent repository, so load their
+    # history from each initialized submodule and map it back to docs-relative paths.
+    submodule_roots = _load_initialized_submodule_roots(docs_dir_path)
+    for submodule_root in submodule_roots:
+        prefix = submodule_root.relative_to(docs_dir_path).as_posix().rstrip('/')
+        for rel_path, metadata in load_git_metadata(submodule_root).items():
+            created_data[f"{prefix}/{rel_path}"] = metadata
 
     # 覆盖 jsonl 创建日期
     jsonl_cache_file = docs_dir_path / '.dates_cache.jsonl'
@@ -36,6 +44,10 @@ def load_dates_and_authors(docs_dir_path: Path, files: Files):
 
     # git 更新日期
     updated_data = load_git_last_updated_dates(docs_dir_path)
+    for submodule_root in submodule_roots:
+        prefix = submodule_root.relative_to(docs_dir_path).as_posix().rstrip('/')
+        for rel_path, timestamp in load_git_last_updated_dates(submodule_root).items():
+            updated_data[f"{prefix}/{rel_path}"] = timestamp
 
     for file in files:
         if file.inclusion.is_excluded():
@@ -58,6 +70,29 @@ def load_dates_and_authors(docs_dir_path: Path, files: Files):
         created_data[rel_path]['updated'] = datetime.fromtimestamp(mtime, tz=timezone.utc)
 
     return created_data
+
+
+def _load_initialized_submodule_roots(docs_dir_path: Path):
+    try:
+        output = subprocess.check_output(
+            ['git', 'submodule', 'foreach', '--quiet', '--recursive', 'git rev-parse --show-toplevel'],
+            cwd=docs_dir_path,
+            encoding='utf-8',
+            stderr=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return []
+
+    roots = []
+    for line in output.splitlines():
+        try:
+            root = Path(line).resolve()
+            root.relative_to(docs_dir_path)
+        except (OSError, ValueError):
+            continue
+        if root.is_dir():
+            roots.append(root)
+    return roots
 
 def compile_exclude_patterns(exclude_list):
     if not exclude_list:
@@ -111,30 +146,43 @@ COAUTHOR_RE = re.compile(
     r'^Co-authored-by:\s*(.+?) <([^<>]+)>$',
     re.MULTILINE | re.IGNORECASE
 )
-def parse_commit_authors(name, email, body):
-    authors = [(name, email)]
-    # Co auth 会导致 mailmap 不生效，为了避免问题，暂时禁用对 co auth 的支持，如果上游更改，需要更新到正确的方案
-    # 我自己的想法是用 git check mailmap，但是这样新增了太多，而且还要缓存，比较复杂就不实现了
-    
-    # seen = {(name, email)}
+def check_mailmap(name: str, email: str, git_root: Path = None, cache: dict = None):
+    key = (name, email)
+    if cache is not None and key in cache:
+        return cache[key]
+    if git_root:
+        try:
+            proc = subprocess.run(
+                ['git', 'check-mailmap', f'{name} <{email}>'],
+                cwd=git_root,
+                capture_output=True,
+                encoding='utf-8'
+            )
+            if proc.returncode == 0 and proc.stdout.strip():
+                m = re.match(r'^(.*?)\s*<([^<>]+)>$', proc.stdout.strip())
+                if m:
+                    res = (m.group(1).strip(), m.group(2).strip())
+                    if cache is not None:
+                        cache[key] = res
+                    return res
+        except Exception as e:
+            logger.debug(f"Error checking mailmap for {name} <{email}>: {e}")
+    if cache is not None:
+        cache[key] = key
+    return key
 
-    # for co_name, co_email in COAUTHOR_RE.findall(body):
-    #     author = (co_name, co_email)
-    #     if author in seen:
-    #         continue
-
-    #     seen.add(author)
-    #     authors.append(author)
-
-    return authors
+def parse_commit_authors(name, email, body, git_root: Path = None, mailmap_cache: dict = None):
+    # 禁用对 Co-Authored-By 协作者的支持（下游明确要求）
+    return [(name, email)]
 
 def load_git_metadata(docs_dir_path: Path):
     dates_cache = {}
     try:
+        docs_dir_path = Path(docs_dir_path).resolve()
         git_root = Path(subprocess.check_output(
             ['git', 'rev-parse', '--show-toplevel'],
             cwd=docs_dir_path, encoding='utf-8'
-        ).strip())
+        ).strip()).resolve()
         rel_docs_path = docs_dir_path.relative_to(git_root)
 
         relative_arg = (
@@ -161,6 +209,7 @@ def load_git_metadata(docs_dir_path: Path):
             authors_dict = defaultdict(dict)
             first_commit = {}
             current_commit = None
+            mailmap_cache = {}
 
             records = process.stdout.split('\x00')
             for item in records:
@@ -171,7 +220,7 @@ def load_git_metadata(docs_dir_path: Path):
                 parts = item.split('\x1f', 3)
                 if len(parts) == 4:
                     name, email, created, body = parts
-                    authors = parse_commit_authors(name, email, body)
+                    authors = parse_commit_authors(name, email, body, git_root, mailmap_cache)
                     current_commit = (authors, int(created))
                 elif item.endswith('.md') and current_commit:
                     authors, created = current_commit
@@ -182,7 +231,6 @@ def load_git_metadata(docs_dir_path: Path):
                         authors_dict[item].setdefault(author, None)
 
                     first_commit.setdefault(item, created)
-
             # 构建最终的缓存数据
             for file_path in first_commit:
                 authors_list = [
@@ -200,10 +248,11 @@ def load_git_metadata(docs_dir_path: Path):
 def load_git_last_updated_dates(docs_dir_path: Path):
     doc_mtime_map = {}
     try:
+        docs_dir_path = Path(docs_dir_path).resolve()
         git_root = Path(subprocess.check_output(
             ['git', 'rev-parse', '--show-toplevel'],
             cwd=docs_dir_path, encoding='utf-8'
-        ).strip())
+        ).strip()).resolve()
         rel_docs_path = docs_dir_path.relative_to(git_root)
 
         relative_arg = (
@@ -438,7 +487,7 @@ BRACE_RE = re.compile(r"\{[^}]*\}")
 MD_SYNTAX_RE = re.compile(r"[`*_#]+")
 
 
-def analyze_markdown(md: str, readtime_wpm: int = DEFAULT_WPM, readtime_wpm_cjk: int = DEFAULT_WPM_CJK) -> tuple[int, str]:
+def analyze_markdown(md: str, readtime_wpm: int = DEFAULT_WPM, readtime_wpm_cjk: int = DEFAULT_WPM_CJK):
     # ---------- for Readtime ----------
     words = 0
     cjk = 0
@@ -611,6 +660,6 @@ def analyze_markdown(md: str, readtime_wpm: int = DEFAULT_WPM, readtime_wpm_cjk:
     seconds += images * 2
 
     minutes = max(1, math.ceil(seconds / 60))
-    summary = html.escape(MD_SYNTAX_RE.sub("", "  ".join(summary_lines)).strip())
+    summary = MD_SYNTAX_RE.sub("", "  ".join(summary_lines)).strip()
 
     return minutes, summary

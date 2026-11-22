@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## v3.9.0 (2026-11-20)
+
+### en
+
+- Fixed creation and update dates for Markdown files in initialized Git submodules
+- Resolved the docs directory path before calculating Git-relative paths, fixing date fallbacks when the directory is accessed through a symlink
+
+### zh
+
+- 修复 Git 子模块中的 Markdown 文档创建日期和更新时间显示错误的问题
+- 修复通过符号链接访问 docs 目录时 Git 相对路径计算失败、日期回退到文件系统时间的问题
+
+
+
+## v3.8.9 (2026-10-23)
+
+### en
+
+- Fixed date formatting when no locale is available
+
+### zh
+
+- 修复无可用 locale 时的日期格式化问题
+
+
+
+## v3.8.8 (2026-10-16)
+
+### en
+
+- Fixed escaping issues in summaries of the recent update module
+
+### zh
+
+- 修复了最近更新模块摘要的转义问题
+
 
 
 ## v3.8.7 (2026-06-19)

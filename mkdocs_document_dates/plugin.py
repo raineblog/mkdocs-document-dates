@@ -9,19 +9,12 @@ from mkdocs.config import config_options
 from mkdocs.structure.pages import Page
 from mkdocs.utils import get_relative_url
 from urllib.parse import urlparse
+from babel.core import default_locale
 from babel.dates import format_datetime
 from .utils import compile_exclude_patterns, is_excluded, get_recently_updated_files, load_dates_and_authors, DEFAULT_WPM, DEFAULT_WPM_CJK
 
 logger = logging.getLogger("mkdocs.plugins.document_dates")
 logger.setLevel(logging.WARNING)  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-
-
-def transform_timezone(_time):
-    if _time.tzinfo is None:
-        _time = _time.replace(tzinfo=timezone.utc)
-    else:
-        _time = _time.astimezone(timezone.utc)
-    return _time
 
 
 class Author:
@@ -31,6 +24,16 @@ class Author:
         self.avatar = avatar
         self.url = url
         self.description = description
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+def transform_timezone(_time):
+    if _time.tzinfo is None:
+        _time = _time.replace(tzinfo=timezone.utc)
+    else:
+        _time = _time.astimezone(timezone.utc)
+    return _time
 
 
 class DocumentDatesPlugin(BasePlugin):
@@ -136,6 +139,11 @@ class DocumentDatesPlugin(BasePlugin):
         js_core_files = ['popper.min.js', 'tippy.umd.min.js']
         for js_file in js_core_files:
             config['extra_javascript'].append(f'assets/document_dates/tippy/{js_file}')
+
+        # Shared text-avatar helper must be available before the core runtime.
+        avatar_script = 'assets/document_dates/core/avatar.js'
+        if not any(str(item) == avatar_script for item in config['extra_javascript']):
+            config['extra_javascript'].append(avatar_script)
 
         # Plugin JS
         config['extra_javascript'].extend([
@@ -284,10 +292,14 @@ class DocumentDatesPlugin(BasePlugin):
             with open(file_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
             for key, info in (data or {}).get('authors', {}).items():
-                self.authors_yml[key] = Author(**info)
+                author_obj = Author(**info)
+                self.authors_yml[key] = author_obj
+                if author_obj.name and author_obj.name not in self.authors_yml:
+                    self.authors_yml[author_obj.name] = author_obj
+                if author_obj.email and author_obj.email not in self.authors_yml:
+                    self.authors_yml[author_obj.email] = author_obj
         except Exception as e:
             logger.info(f"Error parsing .authors.yml: {e}")
-
 
     def _render_recently_updated_html(self, env, config, recently_updated_data, summary_lines):
         # 设置模板加载器
@@ -335,22 +347,31 @@ class DocumentDatesPlugin(BasePlugin):
         authors_list = self.data_cached.get(rel_path, {}).get('authors', None)
         if authors_list:
             authors = []
+            seen_names = set()
             for data in authors_list:
-                full_author = self.authors_yml.get(data['name'])
+                full_author = self.authors_yml.get(data.get('name')) or self.authors_yml.get(data.get('email'))
                 if full_author:
-                    authors.append(self._repair_author(full_author, page.url))
+                    if getattr(full_author, 'ignore', False) or getattr(full_author, 'exclude', False) or getattr(full_author, 'hidden', False):
+                        continue
+                    repaired = self._repair_author(full_author, page.url)
+                    if repaired.name not in seen_names:
+                        seen_names.add(repaired.name)
+                        authors.append(repaired)
                 else:
-                    authors.append(Author(**data))
+                    if data.get('name') not in seen_names:
+                        seen_names.add(data.get('name'))
+                        authors.append(Author(**data))
             return authors
 
         # 2. site_author 或 PC username
         name = config.get('site_author') or Path.home().name
         full_author = self.authors_yml.get(name)
         if full_author:
+            if getattr(full_author, 'ignore', False) or getattr(full_author, 'exclude', False) or getattr(full_author, 'hidden', False):
+                return []
             return [self._repair_author(full_author, page.url)]
         else:
             return [Author(name=name)]
-
     def _load_meta_author(self, meta, page_url):
         try:
             # 匹配 authors 数组
@@ -395,7 +416,9 @@ class DocumentDatesPlugin(BasePlugin):
 
 
     def _formatting_date(self, date: datetime):
-        locale = self.config.get('locale', 'en')
+        # 空配置表示自动检测系统 locale；若运行环境未设置 locale，则回退到英语。
+        locale = (self.config.get('locale') or '').strip()
+        locale = locale or default_locale('LC_TIME') or 'en'
 
         # 兼容旧 strftime 配置，转换为 Babel/ICU 格式
         date_format = (
@@ -443,6 +466,7 @@ class DocumentDatesPlugin(BasePlugin):
             html_parts = []
             position_class = 'document-dates-top' if self.config['position'] == 'top' else 'document-dates-bottom'
             html_parts.append(f"<div class='document-dates-plugin-wrapper {position_class}'>")
+            # 前端 locale 留给浏览器语言回退逻辑；这里只传递用户显式配置。
             html_parts.append(f"<div class='document-dates-plugin' locale='{self.config['locale']}'>")
 
             def build_time_icon(time_obj: datetime, icon: str):
